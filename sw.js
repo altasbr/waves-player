@@ -96,3 +96,24 @@ self.addEventListener('fetch', function(event){
       // Return 503 with offline indication
       return new Response(
         JSON.stringify({
+          offline: true,
+          message: 'Service worker error'
+        }),
+        {
+          status: 503,
+          statusText: 'Service Unavailable',
+          headers: new Headers({
+            'Content-Type': 'application/json'
+          })
+        }
+      );
+    })
+  );
+});
+
+// Handle messages from the app (for future enhancements)
+self.addEventListener('message', function(event){
+  if(event.data && event.data.type === 'SKIP_WAITING'){
+    self.skipWaiting();
+  }
+});
