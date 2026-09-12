@@ -1,8 +1,9 @@
+
 // Minimal service worker: caches the app shell so Waves installs as a real
 // app (standalone window, home screen icon) and still opens with no signal.
 // It does not cache your songs — those live in IndexedDB, handled by the
 // app itself in index.html.
-var CACHE_NAME = 'waves-shell-v1';
+var CACHE_NAME = 'waves-shell-v2';
 var ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', function(event){
