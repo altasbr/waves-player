@@ -1074,53 +1074,153 @@ body.is-playing .eq span{animation-play-state:running;}
   document.getElementById('playlistPickerOverlay').addEventListener('click', function(e){ if(e.target===this) closePlaylistPicker(); });
 
   // ---------- Playback ----------
-  function playTrack(idx){
-    if(idx<0 || idx>=tracks.length) return;
+   // ============================================================
+// FIXED PLAYBACK FUNCTIONS FOR index.html
+// Replace the playback functions (lines 1076-1123) with these
+// ============================================================
+
+// ---------- Playback ----------
+function playTrack(idx){
+  if(idx<0 || idx>=tracks.length) return;
+  try{
     if(currentIndex!==idx){
       currentIndex = idx;
       audio.src = tracks[idx].url;
     }
     updateNowPlayingUI();
+    
+    // Attempt to play, but don't let network errors crash the app
     var p = audio.play();
-    if(p && p.catch) p.catch(function(){});
+    if(p && p.catch){
+      p.catch(function(error){
+        console.warn('Waves: playback failed for track', tracks[idx].title, error);
+        // Don't crash - just log and continue
+        // The app will stay alive and UI will remain responsive
+      });
+    }
+  }catch(e){
+    console.error('Waves: playTrack error', e);
+    showToast('Could not load "'+tracks[idx].title+'"');
   }
-  function togglePlay(){
-    if(currentIndex===-1){
-      if(tracks.length) playTrack(0);
+}
+
+function togglePlay(){
+  if(currentIndex===-1){
+    if(tracks.length) playTrack(0);
+    return;
+  }
+  try{
+    if(audio.paused){
+      var p=audio.play();
+  
+  try{
+    if(audio.currentTime>3){ 
+      audio.currentTime=0;
       return;
     }
-    if(audio.paused){ var p=audio.play(); if(p&&p.catch) p.catch(function(){}); }
-    else { audio.pause(); }
-  }
-  function nextTrack(userInitiated){
-    if(!tracks.length) return;
-    if(currentIndex===-1){ playTrack(0); return; }
-    var list = visibleTracks();
-    var order = list.length ? list.map(function(t){return tracks.indexOf(t);}) : tracks.map(function(_,i){return i;});
-    if(isShuffle){
-      var choices = order.filter(function(i){return i!==currentIndex;});
-      if(!choices.length) choices = order;
-      playTrack(choices[Math.floor(Math.random()*choices.length)]);
-      return;
-    }
-    var pos = order.indexOf(currentIndex);
-    var nextPos = pos+1;
-    if(nextPos>=order.length){
-      if(repeatMode===1 || userInitiated){ nextPos = 0; }
-      else { audio.pause(); return; }
-    }
-    playTrack(order[nextPos]);
-  }
-  function prevTrack(){
-    if(!tracks.length) return;
-    if(currentIndex===-1){ playTrack(0); return; }
-    if(audio.currentTime>3){ audio.currentTime=0; return; }
+    
     var list = visibleTracks();
     var order = list.length ? list.map(function(t){return tracks.indexOf(t);}) : tracks.map(function(_,i){return i;});
     var pos = order.indexOf(currentIndex);
     var prevPos = pos-1<0 ? order.length-1 : pos-1;
     playTrack(order[prevPos]);
+  }catch(e){
+    console.error('Waves: prevTrack error', e);
   }
+}
+
+function toggleLikeById(trackId){
+  try{
+    var t = tracks.filter(function(x){return x.id===trackId;})[0];
+    if(!t) return;
+    t.liked = !t.liked;
+    renderContent();
+    renderSidebarCount();
+    if(tracks.indexOf(t)===currentIndex) updateNowPlayingUI();
+    persistLibrary();
+  }catch(e){
+    console.error('Waves: toggleLikeById error', e);
+  }
+}
+
+// ============================================================
+// IMPROVED AUDIO EVENT LISTENERS
+// Replace the audio event listeners (lines 1189-1220) with these
+// ============================================================
+
+audio.addEventListener('play', function(){
+  try{
+    isPlaying = true;
+    // Even if nextTrack fails, don't crash the app
+  }
+});
+
+audio.addEventListener('timeupdate', function(){
+  try{
+    if(seekBar.dataset.dragging==='1') return;
+    var d = audio.duration || (tracks[currentIndex]&&tracks[currentIndex].duration) || 0;
+    var pct = d ? (audio.currentTime/d*100) : 0;
+    seekFill.style.width = pct+'%';
+    seekKnob.style.left = pct+'%';
+    curTime.textContent = formatTime(audio.currentTime);
+    if(d) durTime.textContent = formatTime(d);
+  }catch(e){
+    console.error('Waves: timeupdate event error', e);
+  }
+});
+
+audio.addEventListener('loadedmetadata', function(){
+  try{
+    if(currentIndex>-1){
+      tracks[currentIndex].duration = audio.duration;
+      updateNowPlayingUI();
+      renderContent();
+    }
+  }catch(e){
+    console.error('Waves: loadedmetadata event error', e);
+  }
+});
+
+audio.addEventListener('error', function(){
+  try{
+    if(currentIndex>-1){
+      var currentTrack = tracks[currentIndex];
+      if(currentTrack){
+        console.warn('Waves: audio error for track:', currentTrack.title);
+        showToast('Couldn\'t play "'+currentTrack.title+'". Skipping...');
+        // Try to skip to next track automatically
+        nextTrack(false);
+      }
+    }
+  }catch(e){
+    console.error('Waves: error event handler error', e);
+  }
+});
+
+// ============================================================
+// NETWORK STATUS DETECTION (Optional but helpful)
+// Add this after the audio event listeners for better UX
+// ============================================================
+
+var isOnline = navigator.onLine;
+
+window.addEventListener('online', function(){
+  isOnline = true;
+  showToast('Back online!');
+  console.log('Waves: reconnected to network');
+});
+
+window.addEventListener('offline', function(){
+  isOnline = false;
+  showToast('You\'re offline - will play from local storage');
+  console.log('Waves: lost network connection');
+});
+
+// Check initial status
+if(!navigator.onLine){
+  console.log('Waves: offline at startup');
+}
+
   function toggleLikeById(trackId){
     var t = tracks.filter(function(x){return x.id===trackId;})[0];
     if(!t) return;
