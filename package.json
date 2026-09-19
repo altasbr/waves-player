@@ -1,0 +1,17 @@
+{
+  "name": "waves-music-player",
+  "version": "1.0.0",
+  "description": "Waves - a personal music player with playlists and on-device song storage",
+  "scripts": {
+    "sync": "npx cap sync",
+    "android": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/filesystem": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.0.0"
+  }
+}

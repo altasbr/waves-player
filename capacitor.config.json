@@ -1,0 +1,8 @@
+{
+  "appId": "com.example.wavesmusicplayer",
+  "appName": "Waves",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}
